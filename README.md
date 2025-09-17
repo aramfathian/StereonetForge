@@ -7,6 +7,11 @@
 StereonetForge is a dependency-light **stereonet** plotter for planar geology data (e.g., Dip / Dip Direction).  
 It works with **one** or **many groups** (or no group column), computes **mean planes**, **KDE pole-density rings**, and optional **intersection lines** between mean planes.
 
+## How to cite
+```
+Fathian, A. (2025). *StereonetForge* (v0.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140123
+```
+
 ## Install
 ```bash
 python -m pip install stereonet-forge
@@ -39,12 +44,6 @@ stereonet-plot examples_general/example_combined_column.csv --group-col Domain -
 ```python
 from stereonet_forge import plot_stereonet_from_csv, Style
 fig, ax = plot_stereonet_from_csv("my.csv", group_col="Face", out_prefix="myplot")
-```
-
-## Citing
-See **CITATION.cff** below. After releasing a version on GitHub, enable Zenodo to mint a DOI, then cite like:
-```
-Fathian, A. (2025). *StereonetForge* (v0.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140123
 ```
 
 ## Development
