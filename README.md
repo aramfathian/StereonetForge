@@ -9,7 +9,7 @@ It works with **one** or **many groups** (or no group column), computes **mean p
 
 ## How to cite
 ```
-Fathian, A. (2025). StereonetForge (v0.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140123
+Fathian, A. (2025). StereonetForge (v0.2.1) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140123
 ```
 
 ## Install
@@ -21,7 +21,7 @@ python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@mai
 
 **Option B — from a numbered tag**
 ```bash
-python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@v0.2.0"
+python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@v0.2.1"
 # If you see "did not match any file(s) known to git", use the exact tag listed on the Releases page.
 ```
 
