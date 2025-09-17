@@ -9,7 +9,7 @@ It works with **one** or **many groups** (or no group column), computes **mean p
 
 ## How to cite
 ```
-Fathian, A. (2025). *StereonetForge* (v0.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140124
+Fathian, A. (2025). *StereonetForge* (v0.1.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.17140123
 ```
 
 ## Install
