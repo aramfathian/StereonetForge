@@ -14,25 +14,41 @@ Fathian, A. (2025). StereonetForge (v0.2.1) [Software]. Zenodo. https://doi.org/
 
 ## Install
 
-**Option A — from GitHub (recommended until on PyPI)**
+**Option A (recommended)**
+```bash
+pip install stereonet
+
+# verify
+stereonet-plot --help
+
+# upgrade
+pip install -U stereonet
+```
+
+**Option B — from GitHub**
 ```bash
 python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@main"
 ```
 
-**Option B — from a numbered tag**
+**Option C — from a numbered tag**
 ```bash
 python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@v0.2.1"
 # If you see "did not match any file(s) known to git", use the exact tag listed on the Releases page.
 ```
 
-**Option C — from the local folder**
+**Option D — from the local folder**
 ```bash
 python -m pip install .
 ```
 
-> Once published to PyPI, users can do: `pip install stereonet-forge`
+## Minimal Usage
+```
+stereonet-plot your.csv --out-prefix myplot
+# If you have a grouping column:
+# stereonet-plot your.csv --group-col Face --out-prefix myplot
+```
 
-## Command Line
+## Command Line Examples
 ```bash
 # Single group (no group column)
 stereonet-plot examples_general/example_one_group.csv --out-prefix ex1
