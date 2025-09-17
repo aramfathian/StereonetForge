@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: StereonetForge
+message: "If you use this software, please cite it as below."
+authors:
+  - given-names: Aram
+    family-names: Fathian
+    name-particle: ""
+    name-suffix: ""
+    affiliation: "Department of Earth, Energy, and Environment; Water, Sediment, Hazards, and Earth-surface Dynamics (waterSHED) Lab; University of Calgary"
+	orcid: "https://orcid.org/0000-0001-8025-5692"
+version: 0.1.0
+date-released: 2025-09-16
+license: MIT
+repository-code: "https://github.com/aramfathian/StereonetForge"
+preferred-citation:
+  type: software
+  authors:
+    - given-names: Aram
+      family-names: Fathian
+  title: StereonetForge
+  version: 0.1.0
+  date-released: 2025-09-16
+  # doi: 10.5281/zenodo.XXXXXXX
