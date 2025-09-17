@@ -55,4 +55,3 @@ python -m build
 twine check dist/*
 twine upload dist/*
 ```
-Edit **pyproject.toml** to set project URLs before publishing.
