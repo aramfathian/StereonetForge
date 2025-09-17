@@ -7,40 +7,12 @@ Author: Dr. Aram Fathian
 Affiliation: Department of Earth, Energy, and Environment; Water, Sediment, Hazards, and Earth-surface Dynamics (waterSHED) Lab; University of Calgary
 License: MIT
 """
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-stereonet_plot_general.py — dependency‑light stereonet plotter for planes
-
-Author: <your-name-here>
-License: MIT
-
-Highlights
-----------
-- Works with **one group or many groups** (or no group column at all).
-- Input: **Dip** and **Dip Direction / Azimuth** in degrees. Autodetects columns.
-  * Also supports combined string column like "35/120" or "35,120".
-  * If you only have **Strike** and **Dip**, it derives Dip Direction = (Strike + 90) % 360 (right‑hand rule).
-- Per‑group: poles, KDE density, pale plane arcs, mean plane.
-- Intersections: choose `--intersections auto|none|all|A|B,B|C,...` (auto draws one if exactly 2 groups).
-- Vector outputs (PDF/SVG) keep fonts as text.
-
-CLI quick start
----------------
-python stereonet_plot_general.py your.csv --out-prefix myplot
-# with a specific group column (optional):
-python stereonet_plot_general.py your.csv --group-col Face --out-prefix myplot
-# draw all pairwise intersections:
-python stereonet_plot_general.py your.csv --group-col Face --intersections all --out-prefix myplot
-"""
-
 from __future__ import annotations
+
 import argparse
 import math
-import re
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence, Tuple, Dict, Any
+from typing import Iterable, List, Optional, Sequence, Tuple, Dict
 
 import numpy as np
 import pandas as pd
@@ -51,6 +23,7 @@ import matplotlib.pyplot as plt
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype']  = 42
 matplotlib.rcParams['svg.fonttype'] = 'none'
+
 
 # ------------------------- Math / projection helpers -------------------------
 
@@ -76,7 +49,6 @@ def vector_from_trend_plunge(trend_deg: float, plunge_deg: float) -> np.ndarray:
     return v if n == 0 else v / n
 
 def pole_from_plane(dip_deg: float, dipdir_deg: float) -> Tuple[float, float]:
-    # plane normal (pole) plunges 90 - dip toward dip direction + 180 (opposite)
     trend = wrap_360(dipdir_deg + 180.0)
     plunge = max(0.0, 90.0 - float(dip_deg))
     return trend, plunge
@@ -88,7 +60,6 @@ def schmidt_equal_area_xy(trend_deg: float, plunge_deg: float) -> Tuple[float, f
     return x,y
 
 def mean_plane_from_poles(poles: Sequence[Tuple[float,float]]) -> Optional[Tuple[float,float]]:
-    """Return (dip, dipdir) of mean plane from its poles (unit‑vector mean)."""
     if len(poles) == 0: return None
     vecs = np.array([vector_from_trend_plunge(T,P) for T,P in poles], dtype=float)
     m = vecs.mean(axis=0); n = np.linalg.norm(m)
@@ -140,10 +111,10 @@ def great_circle_segments_for_plane(dip_deg: float, dipdir_deg: float, npts: int
         if mask.sum() >= 2: clean.append((xseg[mask], yseg[mask]))
     return clean
 
+
 # ------------------------- KDE on the disk -------------------------
 
 def gaussian_kde_on_disk(points_xy: Sequence[Tuple[float,float]], grid_n: int = 361, bandwidth: float = 0.09):
-    """Simple Gaussian KDE evaluated over a square grid, masked to unit disk."""
     xs = np.linspace(-1, 1, grid_n)
     ys = np.linspace(-1, 1, grid_n)
     Xg, Yg = np.meshgrid(xs, ys)
@@ -162,6 +133,7 @@ def gaussian_kde_on_disk(points_xy: Sequence[Tuple[float,float]], grid_n: int = 
     Z *= norm / max(len(pts), 1)
     return Xg, Yg, np.ma.array(Z, mask=~mask_circle)
 
+
 # ------------------------- Column inference & parsing -------------------------
 
 @dataclass
@@ -170,8 +142,6 @@ class ColumnHints:
     ddir_hints: Tuple[str, ...] = ('dipdir','dip_dir','dip direction','dipdirection','azimuth','az','dir','dd',
                                    'DipDir','DipDirection','Azimuth','Az','Dir','DD')
     group_hints: Tuple[str, ...] = ('group','face','set','cluster','class','domain','Group','Face','Set')
-
-_combined_re = re.compile(r'^\s*(\d+(?:\.\d+)?)\s*[/,;:\-\s]\s*(\d+(?:\.\d+)?)\s*$')
 
 def _looks_like_dip(s: pd.Series) -> bool:
     v = pd.to_numeric(s, errors='coerce').dropna()
@@ -182,15 +152,10 @@ def _looks_like_dd(s: pd.Series) -> bool:
     return bool(len(v)) and (v.between(0,360).mean() > 0.8)
 
 def _looks_like_group(s: pd.Series) -> bool:
-    # many categories, but not too many unique
     vals = s.dropna().astype(str).str.strip()
     return 1 <= vals.nunique() <= max(40, int(0.5*len(vals)))
 
 def infer_columns(df: pd.DataFrame, hints: ColumnHints = ColumnHints()) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-    """
-    Returns (dip_col, dipdir_col, combined_col, group_col)
-    combined_col is a single column containing "dip/dipdir" strings if present.
-    """
     cols = list(df.columns)
 
     def find_by_hint(hlist: Iterable[str]) -> Optional[str]:
@@ -203,17 +168,17 @@ def infer_columns(df: pd.DataFrame, hints: ColumnHints = ColumnHints()) -> Tuple
     dd_col  = find_by_hint(hints.ddir_hints)
     group_col = find_by_hint(hints.group_hints)
 
-    # Combined pattern?
     combined_col = None
+    import re
+    _combined_re = re.compile(r'^\\s*(\\d+(?:\\.\\d+)?)\\s*[/,;:\\-\\s]\\s*(\\d+(?:\\.\\d+)?)\\s*$')
     for c in cols:
         if df[c].dtype == object:
             s = df[c].astype(str).str.strip()
             m = s.str.match(_combined_re)
-            if m.mean() > 0.6:  # majority match
+            if m.mean() > 0.6:
                 combined_col = c
                 break
 
-    # Fallbacks by numeric profile
     if dip_col is None:
         for c in cols:
             if _looks_like_dip(df[c]): dip_col=c; break
@@ -226,10 +191,8 @@ def infer_columns(df: pd.DataFrame, hints: ColumnHints = ColumnHints()) -> Tuple
 
     return dip_col, dd_col, combined_col, group_col
 
-def _derive_dipdir_if_strike(df: pd.DataFrame, dip_col: str, dd_col: Optional[str]) -> Optional[str]:
-    """If no dipdir column but a Strike column exists, derive DipDirection = (Strike+90)%360."""
+def _derive_dipdir_if_strike(df: pd.DataFrame, dip_col: Optional[str], dd_col: Optional[str]) -> Optional[str]:
     if dd_col is not None: return dd_col
-    # look for strike
     strike_candidates = [c for c in df.columns if 'strike' in c.lower() or c.lower() in ('str', 'strike(deg)', 'strike (deg)')]
     for sc in strike_candidates:
         try:
@@ -244,9 +207,10 @@ def parse_planes(df: pd.DataFrame,
                  dip_col: Optional[str],
                  dipdir_col: Optional[str],
                  combined_col: Optional[str]) -> List[Tuple[float,float]]:
-    """Return list of (dip, dipdir) from any of the supported formats."""
     planes: List[Tuple[float,float]] = []
     if combined_col is not None and combined_col in df.columns:
+        import re
+        _combined_re = re.compile(r'^\\s*(\\d+(?:\\.\\d+)?)\\s*[/,;:\\-\\s]\\s*(\\d+(?:\\.\\d+)?)\\s*$')
         for s in df[combined_col].astype(str).fillna('').tolist():
             m = _combined_re.match(s)
             if not m: continue
@@ -262,23 +226,20 @@ def parse_planes(df: pd.DataFrame,
             planes.append((float(np.clip(d, 0, 90)), float(az)))
         if planes: return planes
 
-    # Nothing explicit found
     return planes
+
 
 # ------------------------- Plotting core -------------------------
 
 @dataclass
 class Style:
-    # Colors
-    cmap_name: str = 'tab10'  # used to color groups; cycles if > 10 groups
-    # KDE ring thresholds (relative to max)
+    cmap_name: str = 'tab10'
     ring_rel_levels: Tuple[float, ...] = (0.40, 0.56, 0.72, 0.86, 0.94)
-    ring_fill_alphas: Tuple[float, ...] = (0.04, 0.10, 0.18, 0.30, 0.44)  # outer -> inner (darker)
+    ring_fill_alphas: Tuple[float, ...] = (0.04, 0.10, 0.18, 0.30, 0.44)
     ring_line_alphas: Tuple[float, ...] = (0.30, 0.40, 0.50, 0.60, 0.70)
     ring_line_widths: Tuple[float, ...] = (0.9, 0.9, 0.9, 1.0, 1.1)
     kde_bandwidth: float = 0.09
 
-    # strokes & markers (absolute widths; scale figure to change relative look)
     net_circle_lw: float = 2.8
     tick_w_general: float = 1.6
     tick_w_cardinal: float = 2.2
@@ -299,7 +260,6 @@ class Style:
 def compute_groups(df: pd.DataFrame,
                    dip_col: Optional[str], dipdir_col: Optional[str], combined_col: Optional[str],
                    group_col: Optional[str]) -> Dict[str, List[Tuple[float,float]]]:
-    """Return dict[group_name] -> list[(dip, dipdir)]. If no group_col -> single 'All' group."""
     if group_col is None or group_col not in df.columns:
         planes = parse_planes(df, dip_col, dipdir_col, combined_col)
         return {'All': planes}
@@ -326,7 +286,6 @@ def intersection_line_from_means(mp1: Optional[Tuple[float,float]], mp2: Optiona
     return Tlin, Plin, x, y
 
 def _parse_intersection_spec(spec: str, group_names: Sequence[str], nonempty: Sequence[str]) -> List[Tuple[str,str]]:
-    """Return list of (A,B) pairs from spec: 'none' | 'auto' | 'all' | 'A|B,B|C' (accepts / or |)."""
     gset = set(group_names)
     nn = [g for g in nonempty if g in gset]
     if spec is None or spec.lower() == 'auto':
@@ -339,7 +298,7 @@ def _parse_intersection_spec(spec: str, group_names: Sequence[str], nonempty: Se
             for j in range(i+1, len(nn)):
                 pairs.append((nn[i], nn[j]))
         return pairs
-    # explicit list
+    import re
     out = []
     for token in re.split(r'[,\s]+', spec.strip()):
         if not token: continue
@@ -356,15 +315,11 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
                    figure_size: Tuple[float,float] = (10.5,10.5),
                    dpi: int = 170,
                    intersections: str = 'auto',
-                   save_png: bool = True, save_svg: bool = True, save_pdf: bool = True) -> Tuple[plt.Figure, plt.Axes]:
-    """Render the stereonet with any number of groups and optional intersections."""
-
-    # Colors per group
+                   save_png: bool = True, save_svg: bool = True, save_pdf: bool = True):
     cmap = plt.get_cmap(style.cmap_name)
     names = list(groups.keys())
     color_map = {name: cmap(i % cmap.N) for i, name in enumerate(names)}
 
-    # Pre-compute utilities
     polesXY: Dict[str, List[Tuple[float,float]]] = {g: poles_xy_from_planes(groups[g]) for g in names}
     means: Dict[str, Optional[Tuple[float,float]]] = {g: mean_plane_from_poles([pole_from_plane(d,az) for (d,az) in groups[g]]) for g in names}
 
@@ -374,7 +329,6 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
     ax.set_xlim(-1.12, 1.12); ax.set_ylim(-1.12, 1.12)
     ax.axis("off")
 
-    # Outer circle & cardinals
     ax.add_artist(plt.Circle((0,0), 1.0, fill=False, linewidth=style.net_circle_lw, color="black"))
     card = dict(fontsize=style.cardinal_fontsize, fontweight="bold", color="black")
     ax.text(0, 1.085, "N", ha="center", va="bottom", **card)
@@ -382,12 +336,10 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
     ax.text(0, -1.11, "S", ha="center", va="top", **card)
     ax.text(-1.11, 0, "W", ha="right", va="center", **card)
 
-    # Center plus
     L = style.center_plus_len
     ax.plot([-L, L], [0,0], color="black", linewidth=style.center_plus_lw, alpha=0.8)
     ax.plot([0,0], [-L, L], color="black", linewidth=style.center_plus_lw, alpha=0.8)
 
-    # Ticks every 10°, NESW thicker & 1.5× longer
     nesw = {0,90,180,270}
     for A in range(0, 360, 10):
         T = deg2rad(A); x0 = math.sin(T); y0 = math.cos(T)
@@ -397,7 +349,6 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
         x1 = math.sin(T) * (1.0 + TL); y1 = math.cos(T) * (1.0 + TL)
         ax.plot([x0, x1], [y0, y1], color="black", linewidth=w)
 
-    # KDE density rings per group
     for g in names:
         XY = np.array(polesXY[g], dtype=float)
         if XY.size == 0: continue
@@ -412,20 +363,17 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
         ax.contourf(Xg, Yg, Z, levels=[abs_levels[-1], zmax], colors=[color_map[g]], alpha=max(style.ring_fill_alphas[-1]*1.4, style.ring_fill_alphas[-1]), zorder=0)
         ax.contour( Xg, Yg, Z, levels=[abs_levels[-1]], colors=[color_map[g]], linewidths=max(style.ring_line_widths[-1], 1.2), alpha=max(style.ring_line_alphas[-1], 0.8), zorder=1)
 
-    # Pale plane arcs
     for g in names:
         for dip, dipdir in groups[g]:
             for xs, ys in great_circle_segments_for_plane(dip, dipdir, npts=361, thresh=0.12):
                 ax.plot(xs, ys, linewidth=style.plane_arc_lw, alpha=style.plane_arc_alpha, color=color_map[g], zorder=2)
 
-    # Poles
     for g in names:
         XY = polesXY[g]
         X, Y = (zip(*XY) if len(XY) else ([], []))
         ax.scatter(X, Y, marker='x', s=style.pole_marker_size, linewidths=style.pole_linewidth, alpha=1.0, color=color_map[g],
                    label=f"Poles: {g} (n={len(XY)})", zorder=3)
 
-    # Mean planes
     for g in names:
         mp = means[g]
         if mp is None: continue
@@ -435,7 +383,6 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
             lbl = f"Mean plane {g} (Dip={dip:.0f}°, DipDir={dipdir:.0f}°)" if k==0 else None
             ax.plot(xs, ys, linewidth=style.mean_plane_lw, alpha=0.98, color=color_map[g], label=lbl, zorder=4)
 
-    # Intersections (optional)
     nonempty = [g for g in names if len(groups[g]) > 0]
     pair_specs = _parse_intersection_spec(intersections, names, nonempty)
     for idx,(a,b) in enumerate(pair_specs):
@@ -447,7 +394,6 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
         ax.text(xx, yy - style.star_label_offset, f"{a}×{b}: {Tlin:.0f}/{Plin:.0f}", fontsize=style.legend_fontsize,
                 ha="center", va="top", color="black")
 
-    # Legend (right side)
     handles, labels = ax.get_legend_handles_labels()
     handles.append(matplotlib.lines.Line2D([], [], color='none', label="Measurements: Dip / Dip Direction (Azimuth), degrees"))
     labels.append("Measurements: Dip / Dip Direction (Azimuth), degrees")
@@ -457,6 +403,7 @@ def plot_stereonet(groups: Dict[str, List[Tuple[float,float]]],
     if save_svg: plt.savefig(out_prefix + ".svg", bbox_inches="tight")
     if save_pdf: plt.savefig(out_prefix + ".pdf", bbox_inches="tight")
     return fig, ax
+
 
 # ------------------------- High-level API / CLI -------------------------
 
@@ -468,8 +415,7 @@ def plot_stereonet_from_csv(csv_path: str,
                             style: Style = Style(),
                             figure_size: Tuple[float,float] = (10.5,10.5),
                             dpi: int = 170,
-                            intersections: str = 'auto') -> Tuple[plt.Figure, plt.Axes]:
-    """Convenience wrapper to read CSV and make the plot with 1..N groups."""
+                            intersections: str = 'auto'):
     df = pd.read_csv(csv_path)
 
     dip_c, dd_c, comb_c, grp_c = infer_columns(df)
@@ -482,7 +428,7 @@ def plot_stereonet_from_csv(csv_path: str,
                           figure_size=figure_size, dpi=dpi, intersections=intersections)
 
 def _build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Stereonet plotter for planes (Dip / Dip Direction) with any number of groups.")
+    p = argparse.ArgumentParser(description="StereonetForge — stereonet plotter for planes (Dip / Dip Direction) with any number of groups.")
     p.add_argument("csv", help="Input CSV file.")
     p.add_argument("--dip-col", default=None, help="Column for Dip (deg). If omitted, auto-detect.")
     p.add_argument("--dipdir-col", default=None, help="Column for Dip Direction / Azimuth (deg). If omitted, auto-detect or derive from Strike.")
