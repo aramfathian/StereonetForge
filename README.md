@@ -13,11 +13,24 @@ Fathian, A. (2025). *StereonetForge* (v0.1.0) [Software]. Zenodo. https://doi.or
 ```
 
 ## Install
+
+**Option A — from GitHub (recommended until on PyPI)**
 ```bash
-python -m pip install stereonet-forge
-# or from source in this repo:
-python -m pip install -r requirements.txt
+python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@main"
 ```
+
+**Option B — from a numbered tag**
+```bash
+python -m pip install "git+https://github.com/aramfathian/StereonetForge.git@v0.2.0"
+# If you see "did not match any file(s) known to git", use the exact tag listed on the Releases page.
+```
+
+**Option C — from the local folder**
+```bash
+python -m pip install .
+```
+
+> Once published to PyPI, users can do: `pip install stereonet-forge`
 
 ## Command Line
 ```bash
